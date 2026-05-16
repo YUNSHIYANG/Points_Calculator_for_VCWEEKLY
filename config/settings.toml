@@ -1,0 +1,46 @@
+[app]
+name = "周刊得点计算器"
+version = "3.0.0"
+author = "云师阳"
+
+[api]
+base_url = "https://api.bilibili.com/x/web-interface/view"
+timeout = 10
+retry_count = 3
+cache_ttl = 300
+
+[excel]
+default_sheet = "Sheet1"
+data_row = 4
+base_row = 5
+column_range = "B:G"
+auto_save = true
+
+[gui]
+theme = "light"
+language = "zh_CN"
+window_width = 1200
+window_height = 800
+min_width = 1000
+min_height = 600
+acrylic_enabled = true
+animation_enabled = true
+
+[logging]
+level = "INFO"
+file = "logs/app.log"
+max_size = 10
+backup_count = 5
+console_output = true
+
+[cache]
+enabled = true
+directory = "cache"
+max_size = 100
+
+[validation]
+bvid_pattern = "^BV[a-zA-Z0-9]{10}$"
+max_input_length = 20
+
+[resources]
+templates = "resources/templates"
