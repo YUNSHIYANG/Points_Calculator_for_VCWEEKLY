@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QGroupBox, QGridLayout, QFrame, QApplication, QMessageBox
 )
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QAction, QFont, QColor
+from PyQt6.QtGui import QAction, QActionGroup, QFont, QColor
 import logging
 from pathlib import Path
 from typing import Optional, Dict
@@ -107,6 +107,9 @@ class MainWindow(QMainWindow):
         # 创建底部状态栏
         self.create_status_bar()
         
+        # 初始模式下隐藏增量卡片
+        self.delta_card.hide()
+        
         # 设置窗口居中
         self.center_window()
         
@@ -135,29 +138,39 @@ class MainWindow(QMainWindow):
         # 模式切换
         mode_menu = view_menu.addMenu("模式")
         
+        mode_group = QActionGroup(self)
+        mode_group.setExclusive(True)
+        
         simple_mode = QAction("简单模式", self)
         simple_mode.setCheckable(True)
         simple_mode.setChecked(True)
         simple_mode.triggered.connect(lambda: self.switch_mode("simple"))
+        mode_group.addAction(simple_mode)
         mode_menu.addAction(simple_mode)
         
         advanced_mode = QAction("高级模式", self)
         advanced_mode.setCheckable(True)
         advanced_mode.triggered.connect(lambda: self.switch_mode("advanced"))
+        mode_group.addAction(advanced_mode)
         mode_menu.addAction(advanced_mode)
         
         # 主题切换
         theme_menu = view_menu.addMenu("主题")
         
+        theme_group = QActionGroup(self)
+        theme_group.setExclusive(True)
+        
         light_theme = QAction("浅色主题", self)
         light_theme.setCheckable(True)
         light_theme.setChecked(True)
         light_theme.triggered.connect(lambda: self.switch_theme("light"))
+        theme_group.addAction(light_theme)
         theme_menu.addAction(light_theme)
         
         dark_theme = QAction("深色主题", self)
         dark_theme.setCheckable(True)
         dark_theme.triggered.connect(lambda: self.switch_theme("dark"))
+        theme_group.addAction(dark_theme)
         theme_menu.addAction(dark_theme)
         
         # 帮助菜单
