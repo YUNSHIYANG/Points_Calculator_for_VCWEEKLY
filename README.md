@@ -1,5 +1,5 @@
 
-# B站周刊得点计算器 v3.0
+# B站周刊得点计算器 v3.1
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/License-GPL--3.0-orange)
@@ -20,7 +20,7 @@
 ### 方式一：直接运行 EXE（推荐）
 
 1. 从 [Releases](https://github.com/YUNSHIYANG/Points_Calculator_for_VCWEEKLY/releases) 页面下载最新版本
-2. 双击 `PCVCW_v3.x.exe` 即可运行
+2. 双击 `PCVCW_v3.1.exe` 即可运行
 
 ### 方式二：从源码运行
 
@@ -192,7 +192,11 @@ python build.py
 
 ## 版本历史
 
-### v3.0.0（当前版本）
+### v3.1（当前版本）
+- 修复了因 Excel 表格读写缓存导致增量数据无法正常显示的bug
+- 对部分 UI 控件进行了优化
+
+### v3.0
 - 全面重构为现代化 Fluent Design 界面
 - 支持浅色/深色主题切换
 - 支持亚克力效果和动画效果开关
@@ -213,6 +217,7 @@ python build.py
 ## 联系方式
 
 - **B站**：[@云师阳](https://space.bilibili.com/1866643210)
+- **B站**：[@星野米诺Mino](https://space.bilibili.com/356228632)
 
 ## 许可证
 
