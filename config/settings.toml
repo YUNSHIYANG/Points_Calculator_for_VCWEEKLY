@@ -23,7 +23,7 @@ window_width = 1200
 window_height = 800
 min_width = 1000
 min_height = 600
-acrylic_enabled = true
+acrylic_enabled = false
 animation_enabled = true
 
 [logging]

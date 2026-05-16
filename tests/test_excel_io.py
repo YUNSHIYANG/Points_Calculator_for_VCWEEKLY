@@ -32,7 +32,8 @@ class TestExcelManager:
         # 清理临时文件
         if self.test_file.exists():
             os.remove(self.test_file)
-        os.rmdir(self.temp_dir)
+        import shutil
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
     
     def create_test_excel(self):
         """创建测试Excel文件"""
@@ -40,14 +41,21 @@ class TestExcelManager:
         ws = wb.active
         ws.title = "Sheet1"
         
-        # 写入测试数据
-        # 基数数据在第5行
-        ws.cell(5, 2, 100000)  # B5: 播放量
-        ws.cell(5, 3, 5000)    # C5: 点赞量
-        ws.cell(5, 4, 1000)    # D5: 弹幕量
-        ws.cell(5, 5, 500)     # E5: 评论量
-        ws.cell(5, 6, 2000)    # F5: 硬币量
-        ws.cell(5, 7, 3000)    # G5: 收藏量
+        # 写入测试数据：模拟周刊格式
+        # 第11行起为历史数据
+        ws.cell(11, 2, 50000)   # B11: 播放量
+        ws.cell(11, 3, 2000)    # C11: 点赞量
+        ws.cell(11, 4, 400)     # D11: 弹幕量
+        ws.cell(11, 5, 200)     # E11: 评论量
+        ws.cell(11, 6, 1000)    # F11: 硬币量
+        ws.cell(11, 7, 1500)   # G11: 收藏量
+        
+        ws.cell(12, 2, 50000)   # B12: 播放量
+        ws.cell(12, 3, 3000)    # C12: 点赞量
+        ws.cell(12, 4, 600)     # D12: 弹幕量
+        ws.cell(12, 5, 300)     # E12: 评论量
+        ws.cell(12, 6, 1000)    # F12: 硬币量
+        ws.cell(12, 7, 1500)   # G12: 收藏量
         
         wb.save(self.test_file)
         wb.close()
@@ -101,20 +109,26 @@ class TestExcelManager:
         assert manager._worksheet is None
     
     def test_read_base_stats(self):
-        """测试读取基数数据"""
+        """测试读取基数数据（遍历累加）"""
         with ExcelManager(self.test_file, "Sheet1") as manager:
-            base_stats = manager.read_base_stats(row=5)
+            base_stats = manager.read_base_stats(start_row=11)
         
         assert isinstance(base_stats, VideoStats)
+        # 50000 + 50000 = 100000
         assert base_stats.view == 100000
+        # 2000 + 3000 = 5000
         assert base_stats.like == 5000
+        # 400 + 600 = 1000
         assert base_stats.danmaku == 1000
+        # 200 + 300 = 500
         assert base_stats.reply == 500
+        # 1000 + 1000 = 2000
         assert base_stats.coin == 2000
+        # 1500 + 1500 = 3000
         assert base_stats.favorite == 3000
     
     def test_read_base_stats_with_default_values(self):
-        """测试读取基数数据（包含默认值）"""
+        """测试读取基数数据（空文件返回0）"""
         # 创建一个没有数据的Excel文件
         empty_file = Path(self.temp_dir) / "empty.xlsx"
         wb = openpyxl.Workbook()
@@ -124,7 +138,7 @@ class TestExcelManager:
         wb.close()
         
         with ExcelManager(empty_file, "Sheet1") as manager:
-            base_stats = manager.read_base_stats(row=5)
+            base_stats = manager.read_base_stats(start_row=11)
         
         assert isinstance(base_stats, VideoStats)
         assert base_stats.view == 0
@@ -142,12 +156,12 @@ class TestExcelManager:
         manager = ExcelManager(self.test_file, "Sheet1")
         
         with pytest.raises(ExcelReadError) as exc_info:
-            manager.read_base_stats(row=5)
+            manager.read_base_stats(start_row=11)
         
         assert "Excel文件未打开" in str(exc_info.value)
     
     def test_write_stats(self):
-        """测试写入统计数据"""
+        """测试写入统计数据（追加到空行）"""
         stats = VideoStats(
             view=200000,
             like=10000,
@@ -158,20 +172,20 @@ class TestExcelManager:
         )
         
         with ExcelManager(self.test_file, "Sheet1") as manager:
-            result = manager.write_stats(stats, "2024-01-01 12:00:00", row=4)
+            result = manager.write_stats(stats, "2024-01-01 12:00:00", start_row=11)
         
         assert result is True
         
-        # 验证数据已写入
+        # 验证数据已写入第13行（11、12行已有数据，追加到13行）
         wb = openpyxl.load_workbook(self.test_file)
         ws = wb["Sheet1"]
         
-        assert ws.cell(4, 2).value == 200000  # B4: 播放量
-        assert ws.cell(4, 3).value == 10000   # C4: 点赞量
-        assert ws.cell(4, 4).value == 2000    # D4: 弹幕量
-        assert ws.cell(4, 5).value == 1000    # E4: 评论量
-        assert ws.cell(4, 6).value == 4000    # F4: 硬币量
-        assert ws.cell(4, 7).value == 6000    # G4: 收藏量
+        assert ws.cell(13, 2).value == 200000  # B13: 播放量
+        assert ws.cell(13, 3).value == 10000   # C13: 点赞量
+        assert ws.cell(13, 4).value == 2000    # D13: 弹幕量
+        assert ws.cell(13, 5).value == 1000    # E13: 评论量
+        assert ws.cell(13, 6).value == 4000    # F13: 硬币量
+        assert ws.cell(13, 7).value == 6000    # G13: 收藏量
         
         # 验证时间信息
         assert "数据获取时间：2024-01-01 12:00:00" in ws.cell(1, 1).value
@@ -192,46 +206,13 @@ class TestExcelManager:
         manager = ExcelManager(self.test_file, "Sheet1")
         
         with pytest.raises(ExcelReadError) as exc_info:
-            manager.write_stats(stats, "2024-01-01 12:00:00", row=4)
+            manager.write_stats(stats, "2024-01-01 12:00:00", start_row=11)
         
         assert "Excel文件未打开" in str(exc_info.value)
     
-    def test_write_stats_to_merged_cell(self):
-        """测试写入到合并单元格"""
-        # 创建一个包含合并单元格的Excel文件
-        merged_file = Path(self.temp_dir) / "merged.xlsx"
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Sheet1"
-        
-        # 合并A4:G4
-        ws.merge_cells('A4:G4')
-        ws.cell(4, 1, "合并单元格")
-        
-        wb.save(merged_file)
-        wb.close()
-        
-        stats = VideoStats(
-            view=200000,
-            like=10000,
-            danmaku=2000,
-            reply=1000,
-            coin=4000,
-            favorite=6000
-        )
-        
-        with ExcelManager(merged_file, "Sheet1") as manager:
-            with pytest.raises(ExcelWriteError) as exc_info:
-                manager.write_stats(stats, "2024-01-01 12:00:00", row=4)
-            
-            assert "合并单元格" in str(exc_info.value)
-        
-        # 清理
-        os.remove(merged_file)
-    
-    def test_write_stats_creates_merged_time_cell(self):
-        """测试写入时创建合并时间单元格"""
-        # 创建一个没有合并单元格的Excel文件
+    def test_write_stats_to_empty_file(self):
+        """测试写入到空文件"""
+        # 创建一个没有数据的Excel文件
         simple_file = Path(self.temp_dir) / "simple.xlsx"
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -249,14 +230,18 @@ class TestExcelManager:
         )
         
         with ExcelManager(simple_file, "Sheet1") as manager:
-            manager.write_stats(stats, "2024-01-01 12:00:00", row=4)
+            manager.write_stats(stats, "2024-01-01 12:00:00", start_row=11)
         
-        # 验证合并单元格已创建
+        # 验证合并单元格已创建且数据写入第11行
         wb = openpyxl.load_workbook(simple_file)
         ws = wb["Sheet1"]
         
         assert "A1:G1" in [str(mr) for mr in ws.merged_cells]
         assert "数据获取时间：2024-01-01 12:00:00" in ws.cell(1, 1).value
+        
+        # 数据写入第11行（第一个空行）
+        assert ws.cell(11, 2).value == 200000
+        assert ws.cell(11, 3).value == 10000
         
         wb.close()
         
@@ -264,8 +249,7 @@ class TestExcelManager:
         os.remove(simple_file)
     
     def test_write_stats_preserves_existing_data(self):
-        """测试写入时保留现有数据"""
-        # 写入初始数据
+        """测试写入时保留现有数据（追加而非覆盖）"""
         stats1 = VideoStats(
             view=100000,
             like=5000,
@@ -276,7 +260,7 @@ class TestExcelManager:
         )
         
         with ExcelManager(self.test_file, "Sheet1") as manager:
-            manager.write_stats(stats1, "2024-01-01 12:00:00", row=4)
+            manager.write_stats(stats1, "2024-01-01 12:00:00", start_row=11)
         
         # 写入新数据
         stats2 = VideoStats(
@@ -289,18 +273,20 @@ class TestExcelManager:
         )
         
         with ExcelManager(self.test_file, "Sheet1") as manager:
-            manager.write_stats(stats2, "2024-01-02 12:00:00", row=4)
+            manager.write_stats(stats2, "2024-01-02 12:00:00", start_row=11)
         
-        # 验证数据已更新
+        # 验证原有数据仍在，新数据追加到下一行
         wb = openpyxl.load_workbook(self.test_file)
         ws = wb["Sheet1"]
         
-        assert ws.cell(4, 2).value == 200000  # B4: 播放量
-        assert ws.cell(4, 3).value == 10000   # C4: 点赞量
-        assert ws.cell(4, 4).value == 2000    # D4: 弹幕量
-        assert ws.cell(4, 5).value == 1000    # E4: 评论量
-        assert ws.cell(4, 6).value == 4000    # F4: 硬币量
-        assert ws.cell(4, 7).value == 6000    # G4: 收藏量
+        # 原有第11、12行数据不变
+        assert ws.cell(11, 2).value == 50000
+        assert ws.cell(12, 2).value == 50000
+        
+        # 第一次写入在第13行
+        assert ws.cell(13, 2).value == 100000
+        # 第二次写入在第14行
+        assert ws.cell(14, 2).value == 200000
         
         # 验证时间信息已更新
         assert "数据获取时间：2024-01-02 12:00:00" in ws.cell(1, 1).value
@@ -333,14 +319,14 @@ class TestExcelManager:
         )
         
         with ExcelManager(multi_sheet_file, "Sheet2") as manager:
-            manager.write_stats(stats, "2024-01-01 12:00:00", row=4)
+            manager.write_stats(stats, "2024-01-01 12:00:00", start_row=11)
         
         # 验证数据写入到了正确的工作表
         wb = openpyxl.load_workbook(multi_sheet_file)
         ws2 = wb["Sheet2"]
         
-        assert ws2.cell(4, 2).value == 200000
-        assert ws2.cell(4, 3).value == 10000
+        assert ws2.cell(11, 2).value == 200000
+        assert ws2.cell(11, 3).value == 10000
         
         wb.close()
         
@@ -358,20 +344,26 @@ class TestExcelManager:
             favorite=6000
         )
         
-        # 写入数据到第5行（基数行）
+        # 写入数据（追加到第13行，因为11、12已有数据）
         with ExcelManager(self.test_file, "Sheet1") as manager:
-            manager.write_stats(stats, "2024-01-01 12:00:00", row=5)
+            manager.write_stats(stats, "2024-01-01 12:00:00", start_row=11)
         
-        # 读取基数数据
+        # 读取基数数据（从第11行累加）
         with ExcelManager(self.test_file, "Sheet1") as manager:
-            base_stats = manager.read_base_stats(row=5)
+            base_stats = manager.read_base_stats(start_row=11)
         
-        assert base_stats.view == 200000
-        assert base_stats.like == 10000
-        assert base_stats.danmaku == 2000
-        assert base_stats.reply == 1000
-        assert base_stats.coin == 4000
-        assert base_stats.favorite == 6000
+        # 50000 + 50000 + 200000 = 300000
+        assert base_stats.view == 300000
+        # 2000 + 3000 + 10000 = 15000
+        assert base_stats.like == 15000
+        # 400 + 600 + 2000 = 3000
+        assert base_stats.danmaku == 3000
+        # 200 + 300 + 1000 = 1500
+        assert base_stats.reply == 1500
+        # 1000 + 1000 + 4000 = 6000
+        assert base_stats.coin == 6000
+        # 1500 + 1500 + 6000 = 9000
+        assert base_stats.favorite == 9000
     
     def test_write_stats_with_zero_values(self):
         """测试写入零值数据"""
@@ -384,23 +376,34 @@ class TestExcelManager:
             favorite=0
         )
         
-        with ExcelManager(self.test_file, "Sheet1") as manager:
-            result = manager.write_stats(stats, "2024-01-01 12:00:00", row=4)
+        # 创建一个空文件
+        empty_file = Path(self.temp_dir) / "zero.xlsx"
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Sheet1"
+        wb.save(empty_file)
+        wb.close()
+        
+        with ExcelManager(empty_file, "Sheet1") as manager:
+            result = manager.write_stats(stats, "2024-01-01 12:00:00", start_row=11)
         
         assert result is True
         
         # 验证数据已写入
-        wb = openpyxl.load_workbook(self.test_file)
+        wb = openpyxl.load_workbook(empty_file)
         ws = wb["Sheet1"]
         
-        assert ws.cell(4, 2).value == 0
-        assert ws.cell(4, 3).value == 0
-        assert ws.cell(4, 4).value == 0
-        assert ws.cell(4, 5).value == 0
-        assert ws.cell(4, 6).value == 0
-        assert ws.cell(4, 7).value == 0
+        assert ws.cell(11, 2).value == 0
+        assert ws.cell(11, 3).value == 0
+        assert ws.cell(11, 4).value == 0
+        assert ws.cell(11, 5).value == 0
+        assert ws.cell(11, 6).value == 0
+        assert ws.cell(11, 7).value == 0
         
         wb.close()
+        
+        # 清理
+        os.remove(empty_file)
     
     def test_write_stats_with_large_values(self):
         """测试写入大数值数据"""
@@ -414,20 +417,20 @@ class TestExcelManager:
         )
         
         with ExcelManager(self.test_file, "Sheet1") as manager:
-            result = manager.write_stats(stats, "2024-01-01 12:00:00", row=4)
+            result = manager.write_stats(stats, "2024-01-01 12:00:00", start_row=11)
         
         assert result is True
         
-        # 验证数据已写入
+        # 验证数据已写入第13行
         wb = openpyxl.load_workbook(self.test_file)
         ws = wb["Sheet1"]
         
-        assert ws.cell(4, 2).value == 10000000
-        assert ws.cell(4, 3).value == 500000
-        assert ws.cell(4, 4).value == 100000
-        assert ws.cell(4, 5).value == 50000
-        assert ws.cell(4, 6).value == 200000
-        assert ws.cell(4, 7).value == 300000
+        assert ws.cell(13, 2).value == 10000000
+        assert ws.cell(13, 3).value == 500000
+        assert ws.cell(13, 4).value == 100000
+        assert ws.cell(13, 5).value == 50000
+        assert ws.cell(13, 6).value == 200000
+        assert ws.cell(13, 7).value == 300000
         
         wb.close()
 
@@ -448,7 +451,7 @@ class TestExcelErrorClasses:
         assert isinstance(error, ExcelError)
     
     def test_excel_write_error(self):
-        """测试Excel写入异常"""
+        """测试Excel读取异常"""
         error = ExcelWriteError("写入失败")
         assert str(error) == "写入失败"
         assert isinstance(error, ExcelError)

@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QGroupBox, QGridLayout, QFrame, QApplication, QMessageBox
 )
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QAction, QFont, QColor
+from PyQt6.QtGui import QAction, QActionGroup, QFont, QColor
 import logging
 from pathlib import Path
 from typing import Optional, Dict
@@ -107,6 +107,9 @@ class MainWindow(QMainWindow):
         # 创建底部状态栏
         self.create_status_bar()
         
+        # 初始模式下隐藏增量卡片
+        self.delta_card.hide()
+        
         # 设置窗口居中
         self.center_window()
         
@@ -135,29 +138,39 @@ class MainWindow(QMainWindow):
         # 模式切换
         mode_menu = view_menu.addMenu("模式")
         
+        mode_group = QActionGroup(self)
+        mode_group.setExclusive(True)
+        
         simple_mode = QAction("简单模式", self)
         simple_mode.setCheckable(True)
         simple_mode.setChecked(True)
         simple_mode.triggered.connect(lambda: self.switch_mode("simple"))
+        mode_group.addAction(simple_mode)
         mode_menu.addAction(simple_mode)
         
         advanced_mode = QAction("高级模式", self)
         advanced_mode.setCheckable(True)
         advanced_mode.triggered.connect(lambda: self.switch_mode("advanced"))
+        mode_group.addAction(advanced_mode)
         mode_menu.addAction(advanced_mode)
         
         # 主题切换
         theme_menu = view_menu.addMenu("主题")
         
+        theme_group = QActionGroup(self)
+        theme_group.setExclusive(True)
+        
         light_theme = QAction("浅色主题", self)
         light_theme.setCheckable(True)
         light_theme.setChecked(True)
         light_theme.triggered.connect(lambda: self.switch_theme("light"))
+        theme_group.addAction(light_theme)
         theme_menu.addAction(light_theme)
         
         dark_theme = QAction("深色主题", self)
         dark_theme.setCheckable(True)
         dark_theme.triggered.connect(lambda: self.switch_theme("dark"))
+        theme_group.addAction(dark_theme)
         theme_menu.addAction(dark_theme)
         
         # 帮助菜单
@@ -373,42 +386,47 @@ class MainWindow(QMainWindow):
     
     def apply_theme(self):
         """应用主题"""
-        # 重建主题对象（支持主题切换）
+        # 读取配置
         theme_name = self.config.get("gui.theme", "light")
+        acrylic_enabled = self.config.get("gui.acrylic_enabled", True)
+        animation_enabled = self.config.get("gui.animation_enabled", True)
+        
+        # 重建主题对象
         self.theme = FluentTheme(theme_name)
         
-        stylesheet = self.theme.get_stylesheet()
+        # 应用样式表（根据亚克力设置调整背景透明度）
+        stylesheet = self.theme.get_stylesheet(acrylic_enabled=acrylic_enabled)
         self.setStyleSheet(stylesheet)
         
         # 应用或移除亚克力效果
-        if self.config.get("gui.acrylic_enabled", True):
-            self.theme.get_acrylic_effect(self, 0.95)
+        if acrylic_enabled:
+            self.theme.apply_acrylic_effect(self)
         else:
             self.theme.remove_acrylic_effect(self)
         
         # 应用或移除动画效果
-        if self.config.get("gui.animation_enabled", True):
+        if animation_enabled:
             self._apply_animations()
         else:
             self._remove_animations()
+        
+        # 保存动画开关状态
+        self._animation_enabled = animation_enabled
     
     def _apply_animations(self):
         """为交互控件添加动画效果"""
-        if not hasattr(self, '_animations_applied') or not self._animations_applied:
-            # 为按钮添加悬停动画
-            for btn in self.findChildren(QPushButton):
-                self.theme.apply_button_hover_animation(btn)
-            self._animations_applied = True
+        # 先移除旧动画
+        self._remove_animations()
+        
+        # 为按钮添加悬停动画
+        for btn in self.findChildren(QPushButton):
+            self.theme.apply_button_hover_animation(btn)
     
     def _remove_animations(self):
         """移除所有动画效果"""
-        if hasattr(self, '_animations_applied') and self._animations_applied:
-            # 移除按钮的悬停动画事件过滤器
-            for btn in self.findChildren(QPushButton):
-                if hasattr(btn, '_hover_animator'):
-                    btn.removeEventFilter(btn._hover_animator)
-                    del btn._hover_animator
-            self._animations_applied = False
+        for btn in self.findChildren(QPushButton):
+            if hasattr(btn, '_hover_animator'):
+                self.theme.remove_button_hover_animation(btn)
     
     def center_window(self):
         """将窗口居中显示"""
@@ -430,13 +448,19 @@ class MainWindow(QMainWindow):
         self.mode = mode
         logger.info(f"切换到{mode}模式")
         
-        # 更新界面
+        # 根据动画开关决定是否使用过渡动画
+        use_animation = getattr(self, '_animation_enabled', True)
+        
         if mode == "simple":
-            # 简单模式：只显示总数据和得分
-            self.delta_card.hide()
+            if use_animation:
+                self.theme.animate_widget_hide(self.delta_card, duration=200)
+            else:
+                self.delta_card.hide()
         else:
-            # 高级模式：显示所有三列
-            self.delta_card.show()
+            if use_animation:
+                self.theme.animate_widget_show(self.delta_card, duration=200)
+            else:
+                self.delta_card.show()
     
     def switch_theme(self, theme: str):
         """
