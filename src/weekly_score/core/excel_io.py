@@ -48,13 +48,18 @@ class ExcelManager:
         self._workbook = None
         self._worksheet = None
     
-    def open(self):
-        """打开Excel文件"""
+    def open(self, data_only: bool = False):
+        """
+        打开Excel文件
+        
+        Args:
+            data_only: 是否以只读数据模式打开（读取公式计算值）
+        """
         try:
             if not self.file_path.exists():
                 raise ExcelReadError(f"文件不存在: {self.file_path}")
             
-            self._workbook = openpyxl.load_workbook(self.file_path)
+            self._workbook = openpyxl.load_workbook(self.file_path, data_only=data_only)
             self._worksheet = self._workbook[self.sheet_name]
             logger.debug(f"已打开Excel文件: {self.file_path}")
         except KeyError:
@@ -77,15 +82,18 @@ class ExcelManager:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
     
-    def read_base_stats(self, row: int = 5) -> VideoStats:
+    def read_base_stats(self, start_row: int = 11) -> VideoStats:
         """
-        读取基数数据
+        读取基数数据（历史累计）
+        
+        从第 start_row 行开始遍历，逐行累加直到遇到空行。
+        此逻辑替代读取 SUM 公式，避免公式缓存问题。
         
         Args:
-            row: 数据行号，默认为5
+            start_row: 数据起始行号，默认为11
             
         Returns:
-            VideoStats: 基数数据
+            VideoStats: 历史累计基数
             
         Raises:
             ExcelReadError: 读取失败
@@ -94,28 +102,50 @@ class ExcelManager:
             raise ExcelReadError("Excel文件未打开")
         
         try:
-            # 读取B5:G5的数据
+            total_view = 0
+            total_like = 0
+            total_danmaku = 0
+            total_reply = 0
+            total_coin = 0
+            total_favorite = 0
+            
+            row = start_row
+            while True:
+                # 读取B列（播放量）判断是否为空行
+                view_val = self._worksheet.cell(row, 2).value
+                if view_val is None or (isinstance(view_val, str) and view_val.strip() == ''):
+                    break
+                
+                total_view += self._safe_float(view_val)
+                total_like += self._safe_float(self._worksheet.cell(row, 3).value)
+                total_danmaku += self._safe_float(self._worksheet.cell(row, 4).value)
+                total_reply += self._safe_float(self._worksheet.cell(row, 5).value)
+                total_coin += self._safe_float(self._worksheet.cell(row, 6).value)
+                total_favorite += self._safe_float(self._worksheet.cell(row, 7).value)
+                
+                row += 1
+            
             base = VideoStats(
-                view=self._get_cell_value(row, 2),
-                like=self._get_cell_value(row, 3),
-                danmaku=self._get_cell_value(row, 4),
-                reply=self._get_cell_value(row, 5),
-                coin=self._get_cell_value(row, 6),
-                favorite=self._get_cell_value(row, 7)
+                view=total_view,
+                like=total_like,
+                danmaku=total_danmaku,
+                reply=total_reply,
+                coin=total_coin,
+                favorite=total_favorite
             )
-            logger.debug(f"已读取基数数据: {base}")
+            logger.debug(f"已读取基数数据（从第{start_row}行累加）: {base}")
             return base
         except Exception as e:
             raise ExcelReadError(f"读取基数数据失败: {e}")
     
-    def write_stats(self, stats: VideoStats, beijing_time_str: str, row: int = 4) -> bool:
+    def write_stats(self, stats: VideoStats, beijing_time_str: str, start_row: int = 11) -> bool:
         """
-        写入统计数据
+        写入统计数据（追加到下一个空行）
         
         Args:
             stats: 视频统计数据
             beijing_time_str: 北京时间字符串
-            row: 数据行号，默认为4
+            start_row: 数据起始行号，默认为11
             
         Returns:
             bool: 是否写入成功
@@ -130,22 +160,20 @@ class ExcelManager:
             # 写入时间信息到合并单元格A1:G1
             self._write_time_info(beijing_time_str)
             
-            # 检查目标单元格是否被合并
-            for col in range(2, 8):
-                if self._is_cell_merged(row, col):
-                    raise ExcelWriteError(f"第{row}行第{col}列属于合并单元格")
+            # 查找下一个空行（从 start_row 开始）
+            target_row = self._find_next_empty_row(start_row)
             
             # 写入数据
-            self._worksheet.cell(row, 2, stats.view)
-            self._worksheet.cell(row, 3, stats.like)
-            self._worksheet.cell(row, 4, stats.danmaku)
-            self._worksheet.cell(row, 5, stats.reply)
-            self._worksheet.cell(row, 6, stats.coin)
-            self._worksheet.cell(row, 7, stats.favorite)
+            self._worksheet.cell(target_row, 2, stats.view)
+            self._worksheet.cell(target_row, 3, stats.like)
+            self._worksheet.cell(target_row, 4, stats.danmaku)
+            self._worksheet.cell(target_row, 5, stats.reply)
+            self._worksheet.cell(target_row, 6, stats.coin)
+            self._worksheet.cell(target_row, 7, stats.favorite)
             
             # 保存文件
             self._workbook.save(self.file_path)
-            logger.info(f"已写入统计数据到: {self.file_path}")
+            logger.info(f"已写入统计数据到第{target_row}行: {self.file_path}")
             return True
             
         except ExcelWriteError:
@@ -188,6 +216,44 @@ class ExcelManager:
         except (ValueError, TypeError):
             logger.warning(f"单元格 ({row}, {col}) 的值 '{value}' 无法转换为整数，使用默认值")
             return default
+    
+    def _safe_float(self, value) -> float:
+        """
+        安全转换为浮点数
+        
+        Args:
+            value: 待转换的值
+            
+        Returns:
+            转换后的浮点数
+        """
+        if value is None:
+            return 0.0
+        if isinstance(value, str):
+            value = value.strip()
+            if value == '':
+                return 0.0
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return 0.0
+    
+    def _find_next_empty_row(self, start_row: int = 11) -> int:
+        """
+        从指定行开始查找下一个空行
+        
+        Args:
+            start_row: 起始行号
+            
+        Returns:
+            下一个空行的行号
+        """
+        row = start_row
+        while True:
+            value = self._worksheet.cell(row, 2).value
+            if value is None or (isinstance(value, str) and value.strip() == ''):
+                return row
+            row += 1
     
     def _is_cell_merged(self, row: int, col: int) -> bool:
         """
