@@ -161,7 +161,7 @@ class ExcelManager:
             self._write_time_info(beijing_time_str)
             
             # 查找下一个空行（从 start_row 开始）
-            target_row = self._find_next_empty_row(start_row)
+            target_row = 4
             
             # 写入数据
             self._worksheet.cell(target_row, 2, stats.view)
