@@ -386,42 +386,47 @@ class MainWindow(QMainWindow):
     
     def apply_theme(self):
         """应用主题"""
-        # 重建主题对象（支持主题切换）
+        # 读取配置
         theme_name = self.config.get("gui.theme", "light")
+        acrylic_enabled = self.config.get("gui.acrylic_enabled", True)
+        animation_enabled = self.config.get("gui.animation_enabled", True)
+        
+        # 重建主题对象
         self.theme = FluentTheme(theme_name)
         
-        stylesheet = self.theme.get_stylesheet()
+        # 应用样式表（根据亚克力设置调整背景透明度）
+        stylesheet = self.theme.get_stylesheet(acrylic_enabled=acrylic_enabled)
         self.setStyleSheet(stylesheet)
         
         # 应用或移除亚克力效果
-        if self.config.get("gui.acrylic_enabled", True):
-            self.theme.get_acrylic_effect(self, 0.95)
+        if acrylic_enabled:
+            self.theme.apply_acrylic_effect(self)
         else:
             self.theme.remove_acrylic_effect(self)
         
         # 应用或移除动画效果
-        if self.config.get("gui.animation_enabled", True):
+        if animation_enabled:
             self._apply_animations()
         else:
             self._remove_animations()
+        
+        # 保存动画开关状态
+        self._animation_enabled = animation_enabled
     
     def _apply_animations(self):
         """为交互控件添加动画效果"""
-        if not hasattr(self, '_animations_applied') or not self._animations_applied:
-            # 为按钮添加悬停动画
-            for btn in self.findChildren(QPushButton):
-                self.theme.apply_button_hover_animation(btn)
-            self._animations_applied = True
+        # 先移除旧动画
+        self._remove_animations()
+        
+        # 为按钮添加悬停动画
+        for btn in self.findChildren(QPushButton):
+            self.theme.apply_button_hover_animation(btn)
     
     def _remove_animations(self):
         """移除所有动画效果"""
-        if hasattr(self, '_animations_applied') and self._animations_applied:
-            # 移除按钮的悬停动画事件过滤器
-            for btn in self.findChildren(QPushButton):
-                if hasattr(btn, '_hover_animator'):
-                    btn.removeEventFilter(btn._hover_animator)
-                    del btn._hover_animator
-            self._animations_applied = False
+        for btn in self.findChildren(QPushButton):
+            if hasattr(btn, '_hover_animator'):
+                self.theme.remove_button_hover_animation(btn)
     
     def center_window(self):
         """将窗口居中显示"""
@@ -443,13 +448,19 @@ class MainWindow(QMainWindow):
         self.mode = mode
         logger.info(f"切换到{mode}模式")
         
-        # 更新界面
+        # 根据动画开关决定是否使用过渡动画
+        use_animation = getattr(self, '_animation_enabled', True)
+        
         if mode == "simple":
-            # 简单模式：只显示总数据和得分
-            self.delta_card.hide()
+            if use_animation:
+                self.theme.animate_widget_hide(self.delta_card, duration=200)
+            else:
+                self.delta_card.hide()
         else:
-            # 高级模式：显示所有三列
-            self.delta_card.show()
+            if use_animation:
+                self.theme.animate_widget_show(self.delta_card, duration=200)
+            else:
+                self.delta_card.show()
     
     def switch_theme(self, theme: str):
         """
