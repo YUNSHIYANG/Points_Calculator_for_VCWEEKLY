@@ -20,7 +20,7 @@
 ### 方式一：直接运行 EXE（推荐）
 
 1. 从 [Releases](https://github.com/YUNSHIYANG/Points_Calculator_for_VCWEEKLY/releases) 页面下载最新版本
-2. 解压后双击 `weekly_score.exe` 即可运行
+2. 双击 `PCVCW_v3.x.exe` 即可运行
 
 ### 方式二：从源码运行
 
