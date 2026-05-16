@@ -1,7 +1,8 @@
+
 # B站周刊得点计算器 v3.0
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white)
-![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-orange)
+![License](https://img.shields.io/badge/License-GPL--3.0-orange)
 ![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-lightgrey)
 
 基于 Bilibili 视频数据的周刊得点计算工具，采用现代化 Fluent Design 界面设计。
@@ -18,7 +19,7 @@
 
 ### 方式一：直接运行 EXE（推荐）
 
-1. 从 [Releases](https://github.com/your-username/Points_Calculator_for_VCWEEKLY/releases) 页面下载最新版本
+1. 从 [Releases](https://github.com/YUNSHIYANG/Points_Calculator_for_VCWEEKLY/releases) 页面下载最新版本
 2. 解压后双击 `weekly_score.exe` 即可运行
 
 ### 方式二：从源码运行
@@ -45,7 +46,7 @@
 ### 高级模式
 
 1. 菜单栏 → 视图 → 模式 → 高级模式
-2. 在 `resources/templates/` 目录下准备对应的 Excel 模板文件
+2. 在 `resources/templates/` 目录下准备对应的 Excel 模板文件（文件名应为 BV 号，如 `BV1GJ411x7h7.xlsx`）
 3. 输入 BV 号查询，程序会自动读取历史基数并计算增量数据
 
 ### 设置说明
@@ -75,7 +76,7 @@ A: 菜单栏 → 视图 → 主题 → 深色主题，或在设置中修改。
 A: 请检查网络连接，或在设置中增加 API 超时时间。
 
 ### Q: 高级模式的 Excel 模板在哪里？
-A: 模板文件位于 `resources/templates/` 目录，文件名需与 BV 号对应。
+A: 模板文件位于 `resources/templates/` 目录，文件名需与 BV 号对应（例如 `BV1GJ411x7h7.xlsx`）。
 
 ## 计算公式说明
 
@@ -85,28 +86,29 @@ A: 模板文件位于 `resources/templates/` 目录，文件名需与 BV 号对�
 - **互动得点**：基于评论 + 弹幕量和互动修正系数
 - **收藏得点**：基于收藏数和收藏修正系数
 - **硬币得点**：基于硬币数和硬币修正系数
-- **点赞得点**：基于点赞数（上限为硬币数的 2 倍）
+- **点赞得点**：基于点赞数
 
 ## 版权声明
 
-本计算器初始版权由：
-- **计算公式**：中 V 周刊组（B站 UID: 156489）
-- **代码实现**：云师阳（B站 UID: 1866643210）
-
-所享有。
+- **计算公式**：来源于 B 站中 V 周刊组（B站 UID: 156489），属于公开的公式定义。
+- **代码实现**：由云师阳（B站 UID: 1866643210）进行初步编写，星野米诺Mino（B站 UID: 356228632）进行项目式重构。
 
 ## 二创说明
 
-本作品采用 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) 协议。您必须：
-- **署名**：注明原作出处
-- **非商业**：不得用于商业用途
-- **相同方式共享**：衍生作品必须使用相同许可证
+本项目代码采用 **GNU General Public License v3.0 (GPL-3.0)** 协议。您必须遵守以下要求：
+
+- **开放源代码**：分发或修改后的代码必须公开源代码
+- **相同方式共享**：衍生作品必须使用相同的 GPL-3.0 协议
+- **保留版权声明**：不得删除或修改原有的版权和许可声明
+- **无附加限制**：不得对本协议授予的权利增加技术限制或其他法律限制
+
+详细条款请参见本仓库根目录下的 `LICENSE` 文件
 
 ### 简单而言
-1. 您可以使用本仓库所提供的代码进行二次修改以适用自身使用需求
-2. 您需要在您二次创作发布时在明显地方列出原始作品的 staff
-3. 本内容完全免费公开，禁止商用及售卖
-4. 您在二次创作时也需要保持同上授权
+1. 您可以自由使用、修改、分发本项目的**代码**，但必须以 GPL-3.0 协议开源您的修改。
+2. 您需要在您的二次创作发布时，在明显位置列出原始作品的作者信息（云师阳）及来源仓库。
+3. 本代码完全免费，允许商业使用（但必须遵守 GPL 条款）。
+4. 如果您希望将本代码用于非开源或专有项目，需联系作者获取商业授权（GPL 不允许闭源分发）。
 
 ---
 
@@ -155,7 +157,7 @@ Points_Calculator_for_VCWEEKLY/
 
 ```bash
 # 克隆仓库
-git clone https://github.com/your-username/Points_Calculator_for_VCWEEKLY.git
+git clone https://github.com/YUNSHIYANG/Points_Calculator_for_VCWEEKLY.git
 cd Points_Calculator_for_VCWEEKLY
 
 # 安装依赖（包含开发工具）
@@ -198,6 +200,9 @@ python build.py
 - 支持打包为单个 exe 文件
 - 66 个单元测试覆盖核心模块
 
+### v2.2
+- 修复了 Excel 缓存读取异常的bug
+  
 ### v2.1
 - 增加 Excel 读写功能
 - 支持读取历史基数、计算增量数据
@@ -211,4 +216,5 @@ python build.py
 
 ## 许可证
 
-本项目采用 [CC BY-NC-SA 4.0](LICENSE) 许可协议。
+本项目代码采用 [GNU General Public License v3.0](LICENSE) 协议。
+```
